@@ -28,7 +28,8 @@
 #' tracks<- prep_data(dat = tracks, coord.names = c("x","y"), id = "id")
 #'
 #' #round times to nearest interval of interest (e.g. 3600 s or 1 hr)
-#' tracks<- round_track_time(dat = tracks, id = "id", int = 3600, tol = 180, time.zone = "UTC")
+#' tracks<- round_track_time(dat = tracks, id = "id", int = 3600, tol = 180, time.zone = "UTC",
+#'                                  units = "secs")
 #'
 #' #create list from data frame
 #' tracks.list<- df_to_list(dat = tracks, ind = "id")
@@ -89,6 +90,9 @@ discrete_move_var=function(dat, lims, varIn, varOut){
 #' @param time.zone character. Specify the time zone for which the date-times
 #'   were recorded. Set to UTC by default. Refer to \code{base::OlsonNames} to view
 #'   all possible time zones.
+#' @param units character. The units of the selected time interval \code{int},
+#'   which can be selected from one of "secs", "mins", "hours", "days", or
+#'   "weeks".
 #'
 #' @return A data frame where \code{dt} and \code{date} are both adjusted based
 #'   upon the rounding of time intervals according to the specified tolerance.
@@ -105,42 +109,59 @@ discrete_move_var=function(dat, lims, varIn, varOut){
 #' tracks<- prep_data(dat = tracks, coord.names = c("x","y"), id = "id")
 #'
 #' #round times to nearest interval of interest (e.g. 3600 s or 1 hr)
-#' tracks<- round_track_time(dat = tracks, id = "id", int = 3600, tol = 180, time.zone = "UTC")
+#' tracks<- round_track_time(dat = tracks, id = "id", int = 3600, tol = 180, time.zone = "UTC",
+#'                           units = "secs")
 #'
 #' @export
-round_track_time = function(dat, id, int, tol, time.zone = "UTC") {
+round_track_time = function(dat, id, int, tol, time.zone = "UTC", units) {
 
   dat<- df_to_list(dat, ind = id)
   for (i in 1:length(dat)) {
-    tmp<- matrix(NA, nrow(dat[[i]]), 2)
+    tmp<- matrix(NA, nrow(dat[[i]]), 1)
 
     if (length(int) == 1) {  #when using only 1 time interval
       for (j in 1:nrow(dat[[i]])) {
         if (is.na(dat[[i]]$dt[j])) {
-          tmp[j, 1:2]<- NA
+          tmp[j,]<- NA
         } else if (dat[[i]]$dt[j] >= (int - tol) & dat[[i]]$dt[j] <= (int + tol) &
                    dat[[i]]$dt[j] != int) {
-          tmp[j, 1:2]<- c(int, dat[[i]]$date[j] - (dat[[i]]$dt[j] - int))
+          tmp[j,]<- int
         } else {
-          tmp[j, 1:2]<- c(dat[[i]]$dt[j], dat[[i]]$date[j])
+          tmp[j,]<- dat[[i]]$dt[j]
         }
       }
     } else {  #when using more than one time interval
       for (j in 1:nrow(dat[[i]])) {
         if (is.na(dat[[i]]$dt[j])) {
-          tmp[j, 1:2]<- NA
+          tmp[j,]<- NA
         } else if (sum(dat[[i]]$dt[j] >= (int - tol) & dat[[i]]$dt[j] <= (int + tol) &
                        dat[[i]]$dt[j] != int) > 0) {
           ind<- which(dat[[i]]$dt[j] >= (int - tol) & dat[[i]]$dt[j] <= (int + tol) &
                         dat[[i]]$dt[j] != int)
-          tmp[j, 1:2]<- c(int[ind], dat[[i]]$date[j] - (dat[[i]]$dt[j] - int))
+          tmp[j,]<- int[ind]
         } else {
-          tmp[j, 1:2]<- c(dat[[i]]$dt[j], dat[[i]]$date[j])
+          tmp[j,]<- dat[[i]]$dt[j]
         }
       }
     }
     dat[[i]]$dt<- tmp[,1]
-    dat[[i]]$date<- tmp[,2] %>%
+
+
+    if (units == "secs") {
+      tmp.dt<- lubridate::seconds(dat[[i]]$dt)
+    } else if (units == "mins") {
+      tmp.dt<- lubridate::seconds(dat[[i]]$dt)*60
+    } else if (units == "hours") {
+      tmp.dt<- lubridate::seconds(dat[[i]]$dt)*60*60
+    } else if (units == "days") {
+      tmp.dt<- lubridate::seconds(dat[[i]]$dt)*60*60*24
+    } else if (units == "weeks") {
+      tmp.dt<- lubridate::seconds(dat[[i]]$dt)*60*60*24*7
+    } else {
+      stop("Units must be either secs, mins, hours, days, or weeks")
+    }
+    tmp.date<- cumsum(c(as.numeric(dat[[i]]$date[1]), tmp.dt[-length(tmp.dt)]))
+    dat[[i]]$date<- tmp.date %>%
       as.POSIXct(origin = '1970-01-01', tz = time.zone)
   }
 
@@ -181,7 +202,8 @@ round_track_time = function(dat, id, int, tol, time.zone = "UTC") {
 #' tracks<- prep_data(dat = tracks, coord.names = c("x","y"), id = "id")
 #'
 #' #round times to nearest interval of interest (e.g. 3600 s or 1 hr)
-#' tracks<- round_track_time(dat = tracks, id = "id", int = 3600, tol = 180, time.zone = "UTC")
+#' tracks<- round_track_time(dat = tracks, id = "id", int = 3600, tol = 180, time.zone = "UTC",
+#'                               units = "secs")
 #'
 #' #create list from data frame
 #' tracks.list<- df_to_list(dat = tracks, ind = "id")
@@ -288,6 +310,10 @@ assign_tseg_internal=function(dat, brkpts){
   breakpt1<- c(0, breakpt, Inf)
   n<- length(breakpt1)
   res<- matrix(NA, nrow(dat), 1)
+
+  #in case time1 modified
+  if (dat$time1[1] != 1 | dplyr::n_distinct(diff(dat$time1)) > 1) dat$time1<- seq(1, nrow(dat))
+
   for (i in 2:n){
     ind<- which(breakpt1[i-1] < dat$time1 & dat$time1 <= breakpt1[i])
     res[ind,]<- i-1
@@ -515,7 +541,7 @@ traceplot=function(data, ngibbs, type) {
 #'
 #'
 #'
-#'
+#' @export
 get_MAP_internal=function(dat, nburn) {
 
   if (which.max(dat[-1]) < nburn) {
@@ -695,6 +721,9 @@ plot_breakpoints_behav=function(data, as_date, var_names, var_labels, brkpts) {
 
   # Reformat data into long form using preferred time variable
   x<- ifelse(as_date == TRUE, "date", "time1")
+
+  #in case time1 modified
+  if (x == "time1" & dplyr::n_distinct(diff(data$time1)) > 1) data$time1<- seq(1, nrow(data))
   dat.long<- data[,c("id", x, var_names)] %>%
     tidyr::pivot_longer(cols = -c(1:2), names_to = "var", values_to = "value")
 
@@ -825,8 +854,8 @@ plot_breakpoints=function(data, as_date = FALSE, var_names, var_labels = NULL, b
 #'   first and the name for the y coordinate second.
 #'
 #' @return A data frame where all original data are returned and new columns are
-#'   added for step length (\code{step}), turning angle (\code{angle}), and time
-#'   step (\code{dt}).
+#'   added for step length (\code{step}), turning angle (\code{angle}),
+#'   net-squared displacement (\code{NSD}), and time step (\code{dt}).
 #'
 #'
 #' @importFrom stats "na.omit"
@@ -852,6 +881,12 @@ prep_data_internal=function(dat, coord.names) {
                  ifelse(angle < -pi, 2*pi + angle, angle))
   dat$angle<- c(NA, angle)
 
+  # calculate net-squared displacement
+  x0<- dat[1,"x"]  #identify starting x-coord
+  y0<- dat[1,"y"]  #identify starting y-coord
+  displ<- sqrt((dat[,"x"] - x0)^2 + (dat[,"y"] - y0)^2)
+  dat$NSD<- displ^2
+
   #calculate time steps
   dt<- difftime(dat$date, dplyr::lag(dat$date, 1), units = "secs") %>%
     na.omit() %>%
@@ -859,22 +894,26 @@ prep_data_internal=function(dat, coord.names) {
     round()
   dat$dt<- c(dt, NA)
 
+
+
   dat
 }
 #------------------------------------------------
 
-#' Calculate step lengths, turning angles, and time steps
+#' Calculate step lengths, turning angles, net-squared displacement, and time
+#' steps
 #'
-#' Calculates step lengths and turning angles based on coordinates for each
-#' animal ID and calculates time steps based on the date-time. Provides a
-#' self-contained method to calculate these variables without needing to rely on
-#' other R packages (e.g., \code{adehabitatLT}). However, functions from other
-#' packages can also be used to perform this step in data preparation.
+#' Calculates step lengths, turning angles, and net-squared displacement based
+#' on coordinates for each animal ID and calculates time steps based on the
+#' date-time. Provides a self-contained method to calculate these variables
+#' without needing to rely on other R packages (e.g., \code{adehabitatLT}).
+#' However, functions from other packages can also be used to perform this step
+#' in data preparation.
 #'
 #' @param dat A data frame that contains a column for animal IDs, the columns
 #'   associated with the x and y coordinates, and a column for the date. For
 #'   easier interpretation of the model results, it is recommended that
-#'   coordinates be stored after UTM projection (meters) as opposed to
+#'   coordinates be stored in a UTM projection (meters) as opposed to
 #'   unprojected in decimal degrees (map units). Date-time should be of class
 #'   \code{POSIXct} and be labeled \code{date} within the data frame.
 #' @param coord.names character. A vector of the column names under which the
@@ -883,10 +922,11 @@ prep_data_internal=function(dat, coord.names) {
 #' @param id character. The name of the column storing the animal IDs.
 #'
 #' @return A data frame where all original data are returned and new columns are
-#'   added for step length (\code{step}), turning angle (\code{angle}), and time
+#'   added for step length (\code{step}), turning angle (\code{angle}),
+#'   net-squared displacement (\code{NSD}), and time
 #'   step (\code{dt}). Names for coordinates are changed to \code{x} and
-#'   \code{y}. Units for step length depend on the projection of the
-#'   coordinates, turning angles are returned in radians, and time steps are
+#'   \code{y}. Units for \code{step} and \code{NSD} depend on the projection of the
+#'   coordinates, \code{angle} is returned in radians, and \code{dt} is
 #'   returned in seconds.
 #'
 #'
@@ -906,7 +946,89 @@ prep_data=function(dat, coord.names, id) {
   purrr::map(df_to_list(dat = dat, ind = id),
       ~prep_data_internal(., coord.names = coord.names)) %>%
     dplyr::bind_rows() %>%
-    mutate_at(c("step","angle"), ~round(., 3))
+    mutate_at(c("step","angle","NSD"), ~round(., 3))
 
 
+}
+#------------------------------------------------
+
+#' Insert NA gaps to regularize a time series
+#'
+#' @param data A data frame that minimally contains columns for animal ID, date,
+#'   and time step. These must be labeled \code{id}, \code{date}, and \code{dt},
+#'   respectively, where date is of class \code{POSIXct}.
+#' @param int integer. An integer that characterizes the desired interval on
+#'   which to insert new rows.
+#' @param units character. The units of the selected time interval \code{int},
+#'   which can be selected from one of "secs", "mins", "hours", "days", or
+#'   "weeks".
+#'
+#' @return A data frame where new rows have been inserted to regularize the \code{date} column. This results in values provided for \code{id}, \code{date}, and {dt} while inserting NAs for all other columns. Additionally, observations with duplicate date-times are removed.
+#'
+#' @examples
+#' #load data
+#' data(tracks)
+#'
+#' #remove rows to show how function works (create irregular time series)
+#' set.seed(1)
+#' ind<- sort(sample(2:15003, 500))
+#'
+#' tracks.red<- tracks[-ind,]
+#'
+#' #calculate step lengths, turning angles, net-squared displacement, and time steps
+#' tracks.red<- prep_data(dat = tracks.red, coord.names = c("x","y"), id = "id")
+#'
+#' #round times to nearest interval
+#' tracks.red<- round_track_time(dat = tracks.red, id = "id", int = c(3600, 7200, 10800, 14400),
+#'                               tol = 300, units = "secs")
+#'
+#' #insert NA gaps
+#' dat.out<- insert_NAs(tracks.red, int = 3600, units = "secs")
+#'
+#'
+#' @export
+insert_NAs = function(data, int, units) {
+
+  dat.list<- bayesmove::df_to_list(data, "id")
+
+  dat.list<- purrr::map(dat.list, ~{
+
+    dat<- data.frame(.x)
+    ind<- which(!is.na(dat$dt) & dat$dt > int)
+    ind2<- ind + 1
+
+    for (i in 1:length(ind)) {
+      if (dat$dt[ind[i]] >= 2*int) {
+
+        vec.length<- floor(dat$dt[ind[i]]/int)  #find multiple of int in dt to determine seq length
+        seq.dates<- seq(dat$date[ind[i]], dat$date[ind2[i]],
+                        by = paste(int, units))[1:vec.length]
+        tmp1<- as.data.frame(lapply(dat[ind[i],], rep, length(seq.dates)))
+        tmp1$date<- seq.dates
+        tmp1$dt<- int
+        NA.names<- which(!(names(tmp1) %in% c("id","date","dt")))
+        tmp1[2:nrow(tmp1),NA.names]<- NA  #insert NAs for added obs
+
+        dat[seq(ind[i]+vec.length, nrow(dat)+vec.length-1),]<- dat[ind2[i]:nrow(dat),]
+        dat[ind[i]:(ind[i]+vec.length-1),]<- tmp1
+
+        ind<- ind + (vec.length - 1)  #update index
+        ind2<- ind2 + (vec.length - 1)  #update index
+
+      } else {
+        dat<- dat
+      }
+    }
+
+
+    #update dt column and remove any duplicate rows
+    dat$dt<- c(as.numeric(difftime(dat$date, dplyr::lag(dat$date), units = units))[-1], NA)
+    dat<- dplyr::distinct(dat, date, .keep_all = TRUE)
+
+    dat
+  })
+
+  dat.out<- dplyr::bind_rows(dat.list)
+
+  dat.out
 }

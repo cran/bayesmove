@@ -127,22 +127,22 @@ extract_prop=function(res, ngibbs, nburn, nmaxclust) {
 }
 #------------------------------------------------
 
-#' Extract bin estimates from Latent Dirichlet Allocation model
+#' Extract bin estimates from Latent Dirichlet Allocation or mixture model
 #'
 #' Pulls model results for the estimates of bin proportions per movement
 #' variable from the posterior distribution. This can be used for visualization
 #' of movement variable distribution for each behavior estimated.
 #'
 #' @param dat The list object returned by the LDA model
-#'   (\code{\link{cluster_segments}}). Used for extracting the element
-#'   \emph{phi}.
+#'   (\code{\link{cluster_segments}}) or mixture model
+#'   (\code{\link{cluster_obs}}). Used for extracting the element \emph{phi}.
 #' @param nburn numeric. The length of the burn-in phase.
 #' @param ngibbs numeric. The total number of iterations of the MCMC chain.
 #' @param nmaxclust numeric. The maximum number of clusters on which to
 #'   attribute behaviors.
 #' @param var.names character. A vector of names used for each of the movement
 #'   variables. Must be in the same order as were listed within the data frame
-#'   returned by \code{\link{summarize_tsegs}}.
+#'   returned by \code{\link{summarize_tsegs}} (if running LDA model).
 #'
 #' @return A data frame that contains columns for bin number, behavioral state,
 #'   proportion represented by a given bin, and movement variable name. This is
@@ -169,7 +169,7 @@ extract_prop=function(res, ngibbs, nburn, nmaxclust) {
 #' #Extract proportions of behaviors per track segment
 #' theta.estim<- extract_prop(res = res, ngibbs = 1000, nburn = 500, nmaxclust = 7)
 #'
-#' #run function
+#' #run function for clustered segments
 #' behav.res<- get_behav_hist(dat = res, nburn = 500, ngibbs = 1000, nmaxclust = 7,
 #'                            var.names = c("Step Length","Turning Angle"))
 #' }
@@ -181,8 +181,9 @@ get_behav_hist=function(dat, nburn, ngibbs, nmaxclust, var.names) {
   #summarize cluster results by frequency and proportion
   behav.list<- list()
   for (i in 1:length(dat$phi)) {
+
     tmp<- matrix(dat$phi[[i]][(nburn+1):ngibbs,], length((nburn+1):ngibbs),
-                 ncol(dat$phi[[i]]))
+                   ncol(dat$phi[[i]]))
     tmp1<- matrix(colMeans(tmp), ncol(tmp) / nmaxclust, nmaxclust, byrow = T)
 
     behav.list[[i]]<- data.frame(bin = 1:nrow(tmp1), tmp1) %>%
@@ -197,6 +198,7 @@ get_behav_hist=function(dat, nburn, ngibbs, nmaxclust, var.names) {
 
   behav.res
 }
+
 #------------------------------------------------
 
 #' Expand behavior estimates from track segments to observations

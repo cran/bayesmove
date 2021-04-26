@@ -2,14 +2,14 @@
 % Please edit documentation in R/LDA_helper_functions.R
 \name{get_behav_hist}
 \alias{get_behav_hist}
-\title{Extract bin estimates from Latent Dirichlet Allocation model}
+\title{Extract bin estimates from Latent Dirichlet Allocation or mixture model}
 \usage{
 get_behav_hist(dat, nburn, ngibbs, nmaxclust, var.names)
 }
 \arguments{
 \item{dat}{The list object returned by the LDA model
-(\code{\link{cluster_segments}}). Used for extracting the element
-\emph{phi}.}
+(\code{\link{cluster_segments}}) or mixture model
+(\code{\link{cluster_obs}}). Used for extracting the element \emph{phi}.}
 
 \item{nburn}{numeric. The length of the burn-in phase.}
 
@@ -20,7 +20,7 @@ attribute behaviors.}
 
 \item{var.names}{character. A vector of names used for each of the movement
 variables. Must be in the same order as were listed within the data frame
-returned by \code{\link{summarize_tsegs}}.}
+returned by \code{\link{summarize_tsegs}} (if running LDA model).}
 }
 \value{
 A data frame that contains columns for bin number, behavioral state,
@@ -52,7 +52,7 @@ res<- cluster_segments(dat = obs, gamma1 = 0.1, alpha = 0.1, ngibbs = 1000,
 #Extract proportions of behaviors per track segment
 theta.estim<- extract_prop(res = res, ngibbs = 1000, nburn = 500, nmaxclust = 7)
 
-#run function
+#run function for clustered segments
 behav.res<- get_behav_hist(dat = res, nburn = 500, ngibbs = 1000, nmaxclust = 7,
                            var.names = c("Step Length","Turning Angle"))
 }

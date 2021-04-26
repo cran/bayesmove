@@ -1,4 +1,4 @@
-test_that("function correctly wrangles phi matrixinto data frame", {
+test_that("function correctly wrangles phi matrix into data frame", {
 
   #simulate data
   SL<- matrix(runif(500*35), 500, 35)
@@ -19,7 +19,8 @@ test_that("function correctly wrangles phi matrixinto data frame", {
 
   res<- list(phi = phi)
 
-  #run function
+
+  #run function (for segmentation/LDA)
   behav.res<- get_behav_hist(dat = res, nburn = 250, ngibbs = 500, nmaxclust = 7,
                              var.names = c("Step Length","Turning Angle"))
 
@@ -29,4 +30,5 @@ test_that("function correctly wrangles phi matrixinto data frame", {
   expect_equal(sum(dplyr::pull(tmp_SL, prop)), 1)
   expect_equal(sum(dplyr::pull(tmp_TA, prop)), 1)
   expect_equal(nrow(behav.res), 35+56)
+
 })

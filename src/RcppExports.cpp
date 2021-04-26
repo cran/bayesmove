@@ -62,12 +62,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// SummarizeDat
+IntegerMatrix SummarizeDat(IntegerVector z, IntegerVector dat, int ncateg, int nbehav, int nobs);
+RcppExport SEXP _bayesmove_SummarizeDat(SEXP zSEXP, SEXP datSEXP, SEXP ncategSEXP, SEXP nbehavSEXP, SEXP nobsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type z(zSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type dat(datSEXP);
+    Rcpp::traits::input_parameter< int >::type ncateg(ncategSEXP);
+    Rcpp::traits::input_parameter< int >::type nbehav(nbehavSEXP);
+    Rcpp::traits::input_parameter< int >::type nobs(nobsSEXP);
+    rcpp_result_gen = Rcpp::wrap(SummarizeDat(z, dat, ncateg, nbehav, nobs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// StoreZ
+IntegerMatrix StoreZ(IntegerVector z, IntegerMatrix store_z, int nobs);
+RcppExport SEXP _bayesmove_StoreZ(SEXP zSEXP, SEXP store_zSEXP, SEXP nobsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type z(zSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type store_z(store_zSEXP);
+    Rcpp::traits::input_parameter< int >::type nobs(nobsSEXP);
+    rcpp_result_gen = Rcpp::wrap(StoreZ(z, store_z, nobs));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_bayesmove_rmultinom1", (DL_FUNC) &_bayesmove_rmultinom1, 2},
     {"_bayesmove_rmultinom2", (DL_FUNC) &_bayesmove_rmultinom2, 4},
     {"_bayesmove_SampleZAgg", (DL_FUNC) &_bayesmove_SampleZAgg, 7},
     {"_bayesmove_CumSumInv", (DL_FUNC) &_bayesmove_CumSumInv, 3},
+    {"_bayesmove_SummarizeDat", (DL_FUNC) &_bayesmove_SummarizeDat, 5},
+    {"_bayesmove_StoreZ", (DL_FUNC) &_bayesmove_StoreZ, 3},
     {NULL, NULL, 0}
 };
 
